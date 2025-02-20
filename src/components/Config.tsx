@@ -51,8 +51,10 @@ const portFields = [
 ];
 
 const langOptions = [
-  ['zh', '中文'],
+  ['zh-cn', '简体中文'],
+  ['zh-tw', '繁體中文'],
   ['en', 'English'],
+  ['vi', 'Vietnamese'],
 ];
 
 const modeOptions = [
@@ -64,8 +66,8 @@ const modeOptions = [
 
 const tunStackOptions = [
   ['gvisor', 'gVisor'],
+  ['mixed', 'Mixed'],
   ['system', 'System'],
-  ['lwip', 'LWIP'],
 ];
 
 const mapState = (s: State) => ({
@@ -96,6 +98,16 @@ type ConfigImplProps = {
   latencyTestUrl: string;
   apiConfig: ClashAPIConfig;
 };
+
+function getBackendContent(version: any): string {
+  if (version && version.meta && !version.premium) {
+    return 'Clash.Meta ';
+  } else if (version && version.meta && version.premium) {
+    return 'sing-box ';
+  } else {
+    return 'Clash Premium';
+  }
+}
 
 function ConfigImpl({
   dispatch,
@@ -232,25 +244,26 @@ function ConfigImpl({
     <div>
       <ContentHeader title={t('Config')} />
       <div className={s0.root}>
-        {portFields.map((f) =>
-          configState[f.key] !== undefined ? (
-            <div key={f.key}>
-              <div className={s0.label}>{f.label}</div>
-              <Input
-                name={f.key}
-                value={configState[f.key]}
-                onChange={({ target: { name, value } }) => handleInputOnChange({ name, value })}
-                onBlur={handleInputOnBlur}
-              />
-            </div>
-          ) : null
-        )}
+        {(version.meta && version.premium) ||
+          portFields.map((f) =>
+            configState[f.key] !== undefined ? (
+              <div key={f.key}>
+                <div className={s0.label}>{f.label}</div>
+                <Input
+                  name={f.key}
+                  value={configState[f.key]}
+                  onChange={({ target: { name, value } }) => handleInputOnChange({ name, value })}
+                  onBlur={handleInputOnBlur}
+                />
+              </div>
+            ) : null
+          )}
 
         <div>
           <div className={s0.label}>Mode</div>
           <Select
-            options={modeOptions}
-            selected={configState.mode.toLowerCase()}
+            options={configState['mode-list'] ? configState['mode-list'].map(value => [value, value]) : modeOptions}
+            selected={configState['mode-list'] ? configState.mode : configState.mode.toLowerCase()}
             onChange={(e) => handleInputOnChange({ name: 'mode', value: e.target.value })}
           />
         </div>
@@ -264,19 +277,22 @@ function ConfigImpl({
           />
         </div>
 
-        <div>
-          <div className={s0.label}>{t('allow_lan')}</div>
-          <div className={s0.wrapSwitch}>
-            <Switch
-              name="allow-lan"
-              checked={configState['allow-lan']}
-              onChange={(value: boolean) =>
-                handleInputOnChange({ name: 'allow-lan', value: value })
-              }
-            />
+        {(version.meta && version.premium) || (
+          <div>
+            <div className={s0.label}>{t('allow_lan')}</div>
+            <div className={s0.wrapSwitch}>
+              <Switch
+                name="allow-lan"
+                checked={configState['allow-lan']}
+                onChange={(value: boolean) =>
+                  handleInputOnChange({ name: 'allow-lan', value: value })
+                }
+              />
+            </div>
           </div>
-        </div>
-        {version.meta && (
+        )}
+
+        {version.meta && !version.premium && (
           <div>
             <div className={s0.label}>{t('tls_sniffing')}</div>
             <div className={s0.wrapSwitch}>
@@ -296,46 +312,50 @@ function ConfigImpl({
       </div>
       {version.meta && (
         <>
-          <div className={s0.section}>
+          {version.premium || (
             <div>
-              <div className={s0.label}>{t('enable_tun_device')}</div>
-              <div className={s0.wrapSwitch}>
-                <Switch
-                  checked={configState['tun']?.enable}
-                  onChange={(value: boolean) =>
-                    handleInputOnChange({ name: 'enable', value: value })
-                  }
-                />
+              <div className={s0.section}>
+                <div>
+                  <div className={s0.label}>{t('enable_tun_device')}</div>
+                  <div className={s0.wrapSwitch}>
+                    <Switch
+                      checked={configState['tun']?.enable}
+                      onChange={(value: boolean) =>
+                        handleInputOnChange({ name: 'enable', value: value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className={s0.label}>TUN IP Stack</div>
+                  <Select
+                    options={tunStackOptions}
+                    selected={configState.tun?.stack?.toLowerCase()}
+                    onChange={(e) => handleInputOnChange({ name: 'stack', value: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <div className={s0.label}>Device Name</div>
+                  <Input
+                    name="device name"
+                    value={configState.tun?.device}
+                    onChange={handleInputOnBlur}
+                  />
+                </div>
+                <div>
+                  <div className={s0.label}>Interface Name</div>
+                  <Input
+                    name="interface name"
+                    value={configState['interface-name'] || ''}
+                    onChange={handleInputOnBlur}
+                  />
+                </div>
+              </div>
+              <div className={s0.sep}>
+                <div />
               </div>
             </div>
-            <div>
-              <div className={s0.label}>TUN IP Stack</div>
-              <Select
-                options={tunStackOptions}
-                selected={configState.tun?.stack?.toLowerCase()}
-                onChange={(e) => handleInputOnChange({ name: 'stack', value: e.target.value })}
-              />
-            </div>
-            <div>
-              <div className={s0.label}>Device Name</div>
-              <Input
-                name="device name"
-                value={configState.tun?.device}
-                onChange={handleInputOnBlur}
-              />
-            </div>
-            <div>
-              <div className={s0.label}>Interface Name</div>
-              <Input
-                name="interface name"
-                value={configState['interface-name'] || ''}
-                onChange={handleInputOnBlur}
-              />
-            </div>
-          </div>
-          <div className={s0.sep}>
-            <div />
-          </div>
+          )}
           <div className={s0.section}>
             <div>
               <div className={s0.label}>Reload</div>
@@ -345,14 +365,16 @@ function ConfigImpl({
                 onClick={handleReloadConfigFile}
               />
             </div>
-            <div>
-              <div className={s0.label}>GEO Databases</div>
-              <Button
-                start={<DownloadCloud size={16} />}
-                label={t('update_geo_databases_file')}
-                onClick={handleUpdateGeoDatabasesFile}
-              />
-            </div>
+            {version.meta && !version.premium && (
+              <div>
+                <div className={s0.label}>GEO Databases</div>
+                <Button
+                  start={<DownloadCloud size={16} />}
+                  label={t('update_geo_databases_file')}
+                  onClick={handleUpdateGeoDatabasesFile}
+                />
+              </div>
+            )}
             <div>
               <div className={s0.label}>FakeIP</div>
               <Button
@@ -361,22 +383,26 @@ function ConfigImpl({
                 onClick={handleFlushFakeIPPool}
               />
             </div>
-            <div>
-              <div className={s0.label}>Restart</div>
-              <Button
-                start={<RotateCw size={16} />}
-                label={t('restart_core')}
-                onClick={handleRestartCore}
-              />
-            </div>
-            <div>
-              <div className={s0.label}>⚠️ Upgrade ⚠️</div>
-              <Button
-                start={<RotateCw size={16} />}
-                label={t('upgrade_core')}
-                onClick={handleUpgradeCore}
-              />
-            </div>
+            {version.meta && !version.premium && (
+              <div>
+                <div className={s0.label}>Restart</div>
+                <Button
+                  start={<RotateCw size={16} />}
+                  label={t('restart_core')}
+                  onClick={handleRestartCore}
+                />
+              </div>
+            )}
+            {version.meta && !version.premium && (
+              <div>
+                <div className={s0.label}>⚠️ Upgrade ⚠️</div>
+                <Button
+                  start={<RotateCw size={16} />}
+                  label={t('upgrade_core')}
+                  onClick={handleUpgradeCore}
+                />
+              </div>
+            )}
           </div>
           <div className={s0.sep}>
             <div />
@@ -416,10 +442,14 @@ function ConfigImpl({
         </div>
 
         <div>
+          <div className={s0.label}>
+            {t('current_backend')}
+            <p>{getBackendContent(version) + apiConfig?.baseURL}</p>
+          </div>
           <div className={s0.label}>Action</div>
           <Button
             start={<LogOut size={16} />}
-            label="Switch backend"
+            label={t('switch_backend')}
             onClick={openAPIConfigModal}
           />
         </div>
